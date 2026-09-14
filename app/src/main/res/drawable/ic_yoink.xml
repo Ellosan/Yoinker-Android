@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- A line that drops, turns, and hooks back up: the yoink. -->
+    <path
+        android:pathData="M12,3 V12.5"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M8.5,9 L12,12.7 L15.5,9"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2"
+        android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path
+        android:pathData="M5,16 v1.5 a3,3 0 0 0 3,3 h8 a3,3 0 0 0 3,-3 V16"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2"
+        android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

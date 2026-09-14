@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Only the settings travel. The engine re-unpacks itself on first run and
+         finished files live in the media store, which has its own backup rules. -->
+    <include domain="sharedpref" path="yoinker.xml" />
+</full-backup-content>

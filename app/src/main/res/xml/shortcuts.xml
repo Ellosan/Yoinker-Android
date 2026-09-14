@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Direct Share: puts "Yoink" rows at the top of the share sheet, one per
+         mode. The rows themselves are published at runtime by ShareTargets. -->
+    <share-target android:targetClass="com.pylo.yoinker.share.ShareActivity">
+        <data android:mimeType="text/plain" />
+        <category android:name="com.pylo.yoinker.category.YOINK_TARGET" />
+    </share-target>
+
+    <shortcut
+        android:shortcutId="yoink_clipboard"
+        android:enabled="true"
+        android:icon="@drawable/ic_yoink"
+        android:shortcutShortLabel="@string/shortcut_paste_short"
+        android:shortcutLongLabel="@string/shortcut_paste_long">
+        <intent
+            android:action="com.pylo.yoinker.action.RUN"
+            android:targetPackage="com.pylo.yoinker"
+            android:targetClass="com.pylo.yoinker.automation.AutomationActivity">
+            <extra android:name="action" android:value="YOINK_CLIPBOARD" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="open_queue"
+        android:enabled="true"
+        android:icon="@drawable/ic_queue"
+        android:shortcutShortLabel="@string/shortcut_queue_short"
+        android:shortcutLongLabel="@string/shortcut_queue_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.pylo.yoinker"
+            android:targetClass="com.pylo.yoinker.ui.MainActivity">
+            <extra android:name="tab" android:value="queue" />
+        </intent>
+    </shortcut>
+</shortcuts>

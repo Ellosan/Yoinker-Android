@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Yoinker</string>
+    <string name="share_label">Yoink</string>
+    <string name="tile_label">Yoink link</string>
+
+    <string name="alias_yoink_clipboard">Yoinker: yoink clipboard</string>
+    <string name="alias_start_queue">Yoinker: start queue</string>
+    <string name="alias_pause_queue">Yoinker: pause queue</string>
+    <string name="alias_mode_a">Yoinker: mode 1</string>
+    <string name="alias_mode_b">Yoinker: mode 2</string>
+    <string name="alias_mode_c">Yoinker: mode 3</string>
+
+    <string name="shortcut_paste_short">Yoink</string>
+    <string name="shortcut_paste_long">Yoink the link in my clipboard</string>
+    <string name="shortcut_queue_short">Queue</string>
+    <string name="shortcut_queue_long">Open the download queue</string>
+
+    <string name="channel_downloads">Downloads</string>
+    <string name="channel_downloads_desc">Progress while a file is being yoinked.</string>
+    <string name="channel_results">Finished files</string>
+    <string name="channel_results_desc">Told you when a file is saved, or when one fails.</string>
+    <string name="channel_automation">Automation</string>
+    <string name="channel_automation_desc">Quiet notice while Yoinker watches for your routines.</string>
+</resources>

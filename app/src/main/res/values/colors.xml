@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window background before Compose paints; the rest of the palette
+         lives in ui/theme/Theme.kt. -->
+    <color name="yk_bg">#0b0a09</color>
+</resources>
