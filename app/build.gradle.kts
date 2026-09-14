@@ -37,7 +37,11 @@ android {
             isEnable = true
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64")
-            isUniversalApk = true
+            // The universal APK is four engines in one file and triples build time.
+            // CI passes -Pyoinker.universalApk=false to skip it.
+            isUniversalApk = providers.gradleProperty("yoinker.universalApk")
+                .map { it.toBoolean() }
+                .getOrElse(true)
         }
     }
 
