@@ -29,6 +29,8 @@ data class YoinkJob(
     val savedName: String? = null,
     val sizeBytes: Long = 0L,
     val error: String? = null,
+    /** Saved fine, but something about the file is worth knowing — see Mp4Probe. */
+    val warning: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 ) {
     val label: String get() = title ?: savedName ?: url

@@ -144,7 +144,8 @@ private fun JobCard(job: YoinkJob, onOpen: () -> Unit) {
             val status = when (job.state) {
                 JobState.QUEUED -> "Waiting"
                 JobState.RUNNING -> null
-                JobState.DONE -> "✓ Saved${job.sizeBytes.takeIf { it > 0 }?.let { " · ${formatBytes(it)}" } ?: ""}"
+                JobState.DONE -> "✓ Saved${job.sizeBytes.takeIf { it > 0 }?.let { " · ${formatBytes(it)}" } ?: ""}" +
+                    (job.warning?.let { "\n⚠ $it" } ?: "")
                 JobState.FAILED -> "⚠ ${job.error ?: "Failed"}"
                 JobState.CANCELED -> "Stopped"
             }

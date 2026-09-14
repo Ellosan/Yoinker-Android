@@ -30,7 +30,7 @@ jobs:
         run: ./gradlew assembleDebug -Pyoinker.universalApk=false --no-daemon
 
       - name: Check it
-        run: ./gradlew lintDebug --no-daemon
+        run: ./gradlew testDebugUnitTest lintDebug --no-daemon
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4

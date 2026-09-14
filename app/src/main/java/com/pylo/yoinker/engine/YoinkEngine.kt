@@ -172,13 +172,39 @@ object YoinkEngine {
             request.addOption("--audio-format", "mp3")
             request.addOption("--audio-quality", quality)
         } else {
-            // Prefer mp4/m4a streams so the common case is a true .mp4 from a clean
-            // merge, with no re-encode. Fall back to best-available, then remux.
-            val cap = if (quality != "best") "[height<=$quality]" else ""
-            request.addOption("-f", "bv*$cap[ext=mp4]+ba[ext=m4a]/b$cap[ext=mp4]/bv*$cap+ba/b$cap")
+            request.addOption("-f", videoSelector(quality))
             request.addOption("--merge-output-format", "mp4")
         }
         return request
+    }
+
+    /**
+     * Which stream to take, in order of preference.
+     *
+     * Asking for `[ext=mp4]` is not the same as asking for something the phone can
+     * play: ext is the container, and Instagram (among others) serves VP9 video
+     * inside an MP4. Worse, yt-dlp's default sorting prefers VP9 and AV1 over H.264
+     * because they compress better — so "best video in an mp4" reliably picked the
+     * one codec a stock Android player won't put on screen. The file downloads, the
+     * audio plays, the picture never arrives.
+     *
+     * So ask by codec first. H.264 with AAC audio is the combination every Android
+     * device since forever decodes in hardware; the container rules stay on as a
+     * fallback for sources that don't report codecs at all.
+     */
+    private fun videoSelector(quality: String): String {
+        val cap = if (quality != "best") "[height<=$quality]" else ""
+        return listOf(
+            "bv*$cap[vcodec^=avc1]+ba[acodec^=mp4a]",
+            "bv*$cap[vcodec^=avc]+ba",
+            "bv*$cap[vcodec^=h264]+ba",
+            "b$cap[vcodec^=avc]",
+            "b$cap[vcodec^=h264]",
+            "bv*$cap[ext=mp4]+ba[ext=m4a]",
+            "b$cap[ext=mp4]",
+            "bv*$cap+ba",
+            "b$cap",
+        ).joinToString("/")
     }
 
     /**

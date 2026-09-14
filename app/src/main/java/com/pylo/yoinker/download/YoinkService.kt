@@ -20,6 +20,7 @@ import com.pylo.yoinker.core.Device
 import com.pylo.yoinker.core.Fmt
 import com.pylo.yoinker.core.Notifications
 import com.pylo.yoinker.core.formatBytes
+import com.pylo.yoinker.engine.Mp4Probe
 import com.pylo.yoinker.engine.YoinkEngine
 import com.pylo.yoinker.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
@@ -147,6 +148,22 @@ class YoinkService : Service() {
 
     private fun finishJob(job: YoinkJob, file: File) {
         notifyProgress(job.label, 100f, if (job.format.isAudio) "Saving MP3…" else "Saving MP4…")
+
+        // A file can be valid and still show nothing — VP9 or AV1 inside an MP4 is
+        // legal, and most Android players won't draw it. The format selector should
+        // have ruled that out; this catches the source that leaves no other choice.
+        val warning = if (job.format.isAudio) {
+            null
+        } else {
+            val codec = Mp4Probe.videoCodec(file)
+            if (Mp4Probe.isStockPlayable(codec)) {
+                null
+            } else {
+                "This one is ${Mp4Probe.codecName(codec)} video — the source offered nothing " +
+                    "else, and some players will show no picture."
+            }
+        }
+
         val saved = runCatching { Exporter.export(applicationContext, file, job.format) }
         File(cacheDir, "yoink/${job.id}").deleteRecursively()
 
@@ -159,9 +176,12 @@ class YoinkService : Service() {
                     savedUri = out.uri?.toString(),
                     savedName = out.displayName,
                     sizeBytes = out.sizeBytes,
+                    warning = warning,
                 )
             }
-            postResult(job, ok = true, text = "${out.displayName} · ${formatBytes(out.sizeBytes)}", uri = out.uri)
+            val text = "${out.displayName} · ${formatBytes(out.sizeBytes)}" +
+                (warning?.let { "\n⚠ $it" } ?: "")
+            postResult(job, ok = true, text = text, uri = out.uri)
             RoutineEngine.fire(applicationContext, TriggerKind.DOWNLOAD_FINISHED)
         }.onFailure { error ->
             val message = "Downloaded, but couldn't save it: ${error.message}"
