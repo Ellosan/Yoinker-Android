@@ -37,8 +37,7 @@ import com.pylo.yoinker.automation.Automation
 import com.pylo.yoinker.automation.Hooks
 import com.pylo.yoinker.automation.Mode
 import com.pylo.yoinker.core.Qualities
-import com.pylo.yoinker.ui.theme.YkGold
-import com.pylo.yoinker.ui.theme.YkInkFaint
+import com.pylo.yoinker.ui.theme.Yk
 
 @Composable
 fun ModesPane() {
@@ -49,12 +48,17 @@ fun ModesPane() {
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Text(
-            text = "A mode is how Yoinker behaves right now — the format, the quality, " +
-                "and whether a shared link starts downloading on its own. Routines switch " +
-                "between them for you.",
+            text = "Modes",
+            style = MaterialTheme.typography.displaySmall,
+            color = Yk.Ink,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        Text(
+            text = "How Yoinker behaves right now — format, quality, and whether a shared " +
+                "link starts on its own. Routines switch between them for you.",
             style = MaterialTheme.typography.bodyMedium,
-            color = YkInkFaint,
-            modifier = Modifier.padding(top = 8.dp),
+            color = Yk.InkFaint,
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
         )
 
         LazyColumn(
@@ -83,9 +87,12 @@ fun ModesPane() {
             }
 
             item {
-                TextButton(onClick = { editing = Mode(name = "New mode") }) {
-                    Text("+  New mode", color = YkGold)
-                }
+                Spacer(Modifier.height(4.dp))
+                GhostButton(
+                    text = "+   New mode",
+                    tint = Yk.GoldBright,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { editing = Mode(name = "New mode") }
             }
         }
     }
@@ -112,32 +119,30 @@ private fun ModeCard(
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (active) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
-        ),
+    YkCard(
+        brush = if (active) Yk.goldFaint else Yk.card,
+        border = if (active) Yk.Gold else Yk.Line,
         modifier = Modifier.fillMaxWidth().clickable(onClick = onActivate),
     ) {
-        Column(Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${mode.emoji}  ${mode.name}", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.weight(1f))
-                if (active) Text("ACTIVE", style = MaterialTheme.typography.labelSmall, color = YkGold)
-            }
-            Text(mode.summary, style = MaterialTheme.typography.bodyMedium, color = YkInkFaint)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "${mode.emoji}   ${mode.name}",
+                style = MaterialTheme.typography.titleMedium,
+                color = Yk.Ink,
+            )
+            Spacer(Modifier.weight(1f))
+            if (active) Text("ACTIVE", style = MaterialTheme.typography.labelSmall, color = Yk.GoldBright)
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(mode.summary, style = MaterialTheme.typography.bodyMedium, color = Yk.InkFaint)
 
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                if (mode.builtIn) {
-                    TextButton(onClick = onDuplicate) { Text("Duplicate", color = YkInkFaint) }
-                } else {
-                    TextButton(onClick = onEdit) { Text("Edit", color = YkGold) }
-                    TextButton(onClick = onDelete) { Text("Delete", color = YkInkFaint) }
-                }
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            if (mode.builtIn) {
+                TextAction("Duplicate", tint = Yk.InkFaint, onClick = onDuplicate)
+            } else {
+                TextAction("Edit", onClick = onEdit)
+                TextAction("Delete", tint = Yk.InkFaint, onClick = onDelete)
             }
         }
     }

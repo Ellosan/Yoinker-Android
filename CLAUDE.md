@@ -17,6 +17,24 @@ fine; the session link is not.
 - `./gradlew testDebugUnitTest lintDebug` before pushing. Lint is expected to pass
   with zero errors.
 
+## Design
+
+The look is charred wood and gold, inherited from the desktop build — every neutral
+has red in it, so nothing drifts blue-grey. Tokens live in `ui/theme/Theme.kt` (the
+`Yk` object) and the component vocabulary in `ui/Common.kt`: `YkCard`, `GoldButton`,
+`GhostButton`, `Pill`, `YkProgress`, `EmptyState`, `Thumb`, `TextAction`. Build
+screens out of those rather than raw Material components, or the app stops looking
+like one thing.
+
+One gold gradient button per screen — it's the only piece of polished brass, and a
+second one makes neither of them the answer. Emoji render in their own colours and
+will fight the palette; the app's own vectors, tinted, stay in key.
+
+`./gradlew recordPaparazziDebug` renders the design to PNGs under
+`app/src/test/snapshots/` so it can be looked at without a device. They're a design
+tool, not a gate — a plain `test` run renders them without comparing, which still
+catches a screen that throws at composition time.
+
 ## The download engine
 
 yt-dlp and ffmpeg run on the device via `youtubedl-android`. When changing format

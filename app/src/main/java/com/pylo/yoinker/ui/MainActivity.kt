@@ -8,29 +8,36 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Transform
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ViewList
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -40,14 +47,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pylo.yoinker.automation.Automation
 import com.pylo.yoinker.convert.ConvertState
 import com.pylo.yoinker.core.Prefs
 import com.pylo.yoinker.download.Queue
-import com.pylo.yoinker.ui.theme.YkGold
-import com.pylo.yoinker.ui.theme.YkInkFaint
+import com.pylo.yoinker.ui.theme.Yk
 import com.pylo.yoinker.ui.theme.YoinkerTheme
 
 class MainActivity : ComponentActivity() {
@@ -57,6 +65,7 @@ class MainActivity : ComponentActivity() {
     ) { /* Refusing either only costs a notification or a tidier save folder. */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         Prefs.init(this)
         askForPermissions()
@@ -74,6 +83,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         takeSharedMedia(intent)
+    }
+
+    private fun tabFromIntent(intent: Intent?): Tab = when (intent?.getStringExtra("tab")) {
+        "queue" -> Tab.QUEUE
+        "convert" -> Tab.CONVERT
+        "modes" -> Tab.MODES
+        "routines" -> Tab.ROUTINES
+        else -> Tab.YOINK
     }
 
     /**
@@ -94,14 +111,6 @@ class MainActivity : ComponentActivity() {
 
         ConvertState.setSource(uri, "")
         return true
-    }
-
-    private fun tabFromIntent(intent: Intent?): Tab = when (intent?.getStringExtra("tab")) {
-        "queue" -> Tab.QUEUE
-        "convert" -> Tab.CONVERT
-        "modes" -> Tab.MODES
-        "routines" -> Tab.ROUTINES
-        else -> Tab.YOINK
     }
 
     /**
@@ -138,74 +147,165 @@ fun YoinkerRoot(startTab: Tab) {
     val mode = Automation.modeById(activeModeId)
     val pending = jobs.count { !it.isFinished }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                Tab.entries.forEach { entry ->
-                    NavigationBarItem(
-                        selected = tab == entry,
-                        onClick = { tab = entry },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = YkGold,
-                            selectedTextColor = YkGold,
-                            unselectedIconColor = YkInkFaint,
-                            unselectedTextColor = YkInkFaint,
-                        ),
-                        icon = {
-                            if (entry == Tab.QUEUE && pending > 0) {
-                                BadgedBox(badge = { Badge { Text("$pending") } }) {
-                                    Icon(entry.icon, contentDescription = entry.label)
-                                }
-                            } else {
-                                Icon(entry.icon, contentDescription = entry.label)
-                            }
-                        },
-                        label = { Text(entry.label) },
-                    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Yk.screen),
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            Header(
+                modeLabel = "${mode.emoji}  ${mode.name}",
+                onModeClick = { tab = Tab.MODES },
+            )
+
+            Box(Modifier.weight(1f)) {
+                Crossfade(targetState = tab, animationSpec = tween(220), label = "tab") { current ->
+                    when (current) {
+                        Tab.YOINK -> YoinkPane()
+                        Tab.QUEUE -> QueuePane()
+                        Tab.CONVERT -> ConvertPane()
+                        Tab.MODES -> ModesPane()
+                        Tab.ROUTINES -> RoutinesPane()
+                    }
                 }
             }
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
-            Header(modeLine = "${mode.emoji} ${mode.name} · ${mode.summary}")
 
-            Box(Modifier.fillMaxSize()) {
-                when (tab) {
-                    Tab.YOINK -> YoinkPane()
-                    Tab.QUEUE -> QueuePane()
-                    Tab.CONVERT -> ConvertPane()
-                    Tab.MODES -> ModesPane()
-                    Tab.ROUTINES -> RoutinesPane()
-                }
+            NavBar(current = tab, pending = pending, onSelect = { tab = it })
+        }
+    }
+}
+
+@Composable
+private fun Header(modeLabel: String, onModeClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // The mark, in its own lit tile.
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(Yk.raisedCard)
+                .border(BorderStroke(1.dp, Yk.Line), RoundedCornerShape(13.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("🪝", style = MaterialTheme.typography.titleMedium)
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Text(
+            text = "Yoinker",
+            style = MaterialTheme.typography.titleLarge,
+            color = Yk.Ink,
+            modifier = Modifier.weight(1f),
+        )
+
+        // The mode in force, and the way into changing it.
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(13.dp))
+                .background(Yk.goldFaint)
+                .border(BorderStroke(1.dp, Yk.GoldDeep), RoundedCornerShape(13.dp))
+                .clickable(onClick = onModeClick)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = modeLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = Yk.GoldBright,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun NavBar(current: Tab, pending: Int, onSelect: (Tab) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Yk.Panel.copy(alpha = 0.94f)),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Yk.Line),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 6.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Tab.entries.forEach { entry ->
+                NavItem(
+                    tab = entry,
+                    selected = entry == current,
+                    badge = if (entry == Tab.QUEUE && pending > 0) pending else 0,
+                    onClick = { onSelect(entry) },
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun Header(modeLine: String) {
+private fun NavItem(
+    tab: Tab,
+    selected: Boolean,
+    badge: Int,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text("🪝", style = MaterialTheme.typography.titleLarge)
-            Text("Yoinker", style = MaterialTheme.typography.titleLarge, color = YkGold)
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(width = 44.dp, height = 28.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selected) Yk.goldFaint else Yk.transparent),
+            )
+            Icon(
+                imageVector = tab.icon,
+                contentDescription = tab.label,
+                tint = if (selected) Yk.GoldBright else Yk.InkFaint,
+                modifier = Modifier.size(21.dp),
+            )
+            if (badge > 0) {
+                Text(
+                    text = if (badge > 9) "9+" else "$badge",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Yk.OnGold,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(Yk.Gold)
+                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                )
+            }
         }
+        Spacer(Modifier.height(3.dp))
         Text(
-            text = modeLine,
-            style = MaterialTheme.typography.bodyMedium,
-            color = YkInkFaint,
+            text = tab.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) Yk.GoldBright else Yk.InkFaint,
+            maxLines = 1,
         )
     }
 }

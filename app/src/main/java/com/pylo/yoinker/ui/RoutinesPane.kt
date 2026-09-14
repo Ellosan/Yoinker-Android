@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -49,8 +48,7 @@ import com.pylo.yoinker.automation.Routine
 import com.pylo.yoinker.automation.Trigger
 import com.pylo.yoinker.automation.TriggerKind
 import com.pylo.yoinker.core.Prefs
-import com.pylo.yoinker.ui.theme.YkGold
-import com.pylo.yoinker.ui.theme.YkInkFaint
+import com.pylo.yoinker.ui.theme.Yk
 
 @Composable
 fun RoutinesPane() {
@@ -67,11 +65,18 @@ fun RoutinesPane() {
         ) {
             item {
                 Text(
-                    text = "When something happens on this phone, Yoinker does something about it. " +
-                        "The built-in routines follow the state your device Modes already change — " +
+                    text = "Routines",
+                    style = MaterialTheme.typography.displaySmall,
+                    color = Yk.Ink,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                Text(
+                    text = "When something happens on this phone, Yoinker does something about " +
+                        "it. The built-in ones follow what your device Modes already change — " +
                         "Do Not Disturb, Wi-Fi, the charger.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = YkInkFaint,
+                    color = Yk.InkFaint,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                 )
             }
 
@@ -91,14 +96,17 @@ fun RoutinesPane() {
             }
 
             item {
-                Row {
-                    TextButton(onClick = { editing = Routine(name = "New routine") }) {
-                        Text("+  New routine", color = YkGold)
-                    }
-                    TextButton(onClick = { showHooks = true }) {
-                        Text("Automation hooks", color = YkInkFaint)
-                    }
-                }
+                Spacer(Modifier.height(4.dp))
+                GhostButton(
+                    text = "+   New routine",
+                    tint = Yk.GoldBright,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { editing = Routine(name = "New routine") }
+                Spacer(Modifier.height(10.dp))
+                GhostButton(
+                    text = "Automation hooks",
+                    modifier = Modifier.fillMaxWidth(),
+                ) { showHooks = true }
             }
         }
     }
@@ -127,42 +135,37 @@ private fun RoutineCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(routine.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                Switch(checked = routine.enabled, onCheckedChange = onToggle)
-            }
+    YkCard(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(routine.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Switch(checked = routine.enabled, onCheckedChange = onToggle)
+        }
 
-            val when_ = buildString {
-                append("When ")
-                append(routine.trigger.kind.label.replaceFirstChar { it.lowercase() })
-                if (routine.trigger.kind.needsTime) append(" (${routine.trigger.timeLabel})")
-                if (routine.trigger.kind.needsTag && routine.trigger.tag.isNotBlank()) {
-                    append(" · tag \"${routine.trigger.tag}\"")
-                }
+        val when_ = buildString {
+            append("When ")
+            append(routine.trigger.kind.label.replaceFirstChar { it.lowercase() })
+            if (routine.trigger.kind.needsTime) append(" (${routine.trigger.timeLabel})")
+            if (routine.trigger.kind.needsTag && routine.trigger.tag.isNotBlank()) {
+                append(" · tag \"${routine.trigger.tag}\"")
             }
-            Text(when_, style = MaterialTheme.typography.bodyMedium, color = YkInkFaint)
+        }
+        Text(when_, style = MaterialTheme.typography.bodyMedium, color = Yk.InkFaint)
 
-            val then = routine.actions.joinToString(" · ") { action ->
-                when (action.kind) {
-                    ActionKind.SET_MODE -> "switch to ${Automation.modeById(action.modeId).name}"
-                    else -> action.kind.label.replaceFirstChar { it.lowercase() }
-                }
+        val then = routine.actions.joinToString(" · ") { action ->
+            when (action.kind) {
+                ActionKind.SET_MODE -> "switch to ${Automation.modeById(action.modeId).name}"
+                else -> action.kind.label.replaceFirstChar { it.lowercase() }
             }
-            if (then.isNotEmpty()) {
-                Text("Then $then", style = MaterialTheme.typography.bodyMedium, color = YkInkFaint)
-            }
+        }
+        if (then.isNotEmpty()) {
+            Text("Then $then", style = MaterialTheme.typography.bodyMedium, color = Yk.InkFaint)
+        }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                TextButton(onClick = onEdit) { Text("Edit", color = YkGold) }
-                if (!routine.builtIn) {
-                    TextButton(onClick = onDelete) { Text("Delete", color = YkInkFaint) }
-                }
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            TextAction("Edit", onClick = onEdit)
+            if (!routine.builtIn) {
+                TextAction("Delete", tint = Yk.InkFaint, onClick = onDelete)
             }
         }
     }
@@ -196,12 +199,10 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                 SectionLabel("When")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     TriggerKind.entries.forEach { kind ->
-                        FilterChip(
+                        Pill(
+                            label = kind.label,
                             selected = draft.trigger.kind == kind,
-                            onClick = { draft = draft.copy(trigger = draft.trigger.copy(kind = kind)) },
-                            label = { Text(kind.label) },
-                            shape = RoundedCornerShape(12.dp),
-                        )
+                        ) { draft = draft.copy(trigger = draft.trigger.copy(kind = kind)) }
                     }
                 }
 
@@ -232,7 +233,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ConditionKind.entries.forEach { kind ->
                         val on = draft.conditions.any { it.kind == kind }
-                        FilterChip(
+                        Pill(
                             selected = on,
                             onClick = {
                                 draft = draft.copy(
@@ -243,8 +244,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                                     },
                                 )
                             },
-                            label = { Text(kind.label) },
-                            shape = RoundedCornerShape(12.dp),
+                            label = kind.label,
                         )
                     }
                 }
@@ -264,7 +264,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                     SectionLabel("In mode")
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         modes.forEach { mode ->
-                            FilterChip(
+                            Pill(
                                 selected = condition.modeId == mode.id,
                                 onClick = {
                                     draft = draft.copy(
@@ -273,8 +273,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                                         },
                                     )
                                 },
-                                label = { Text("${mode.emoji} ${mode.name}") },
-                                shape = RoundedCornerShape(12.dp),
+                                label = "${mode.emoji} ${mode.name}",
                             )
                         }
                     }
@@ -284,7 +283,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ActionKind.entries.forEach { kind ->
                         val on = draft.actions.any { it.kind == kind }
-                        FilterChip(
+                        Pill(
                             selected = on,
                             onClick = {
                                 draft = draft.copy(
@@ -295,8 +294,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                                     },
                                 )
                             },
-                            label = { Text(kind.label) },
-                            shape = RoundedCornerShape(12.dp),
+                            label = kind.label,
                         )
                     }
                 }
@@ -305,7 +303,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                     SectionLabel("Switch to")
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         modes.forEach { mode ->
-                            FilterChip(
+                            Pill(
                                 selected = action.modeId == mode.id,
                                 onClick = {
                                     draft = draft.copy(
@@ -314,8 +312,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                                         },
                                     )
                                 },
-                                label = { Text("${mode.emoji} ${mode.name}") },
-                                shape = RoundedCornerShape(12.dp),
+                                label = "${mode.emoji} ${mode.name}",
                             )
                         }
                     }
@@ -378,7 +375,7 @@ private fun HooksDialog(onDismiss: () -> Unit) {
                         "turn this on and \"Yoinker: start queue\" shows up in the Modes & Routines " +
                         "app list, in Bixby, and in your launcher.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = YkInkFaint,
+                    color = Yk.InkFaint,
                 )
 
                 Spacer(Modifier.height(10.dp))
@@ -392,7 +389,7 @@ private fun HooksDialog(onDismiss: () -> Unit) {
                     Text(
                         text = "The three \"switch mode\" entries point at these modes.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = YkInkFaint,
+                        color = Yk.InkFaint,
                     )
                     slots.forEachIndexed { index, assigned ->
                         val slot = index + 1
@@ -404,14 +401,13 @@ private fun HooksDialog(onDismiss: () -> Unit) {
                                 .horizontalScroll(rememberScrollState()),
                         ) {
                             modes.forEach { mode ->
-                                FilterChip(
+                                Pill(
                                     selected = assigned == mode.id,
                                     onClick = {
                                         Hooks.assignSlot(context, slot, mode.id)
                                         slots = (1..3).map { Prefs.aliasMode(it) }
                                     },
-                                    label = { Text("${mode.emoji} ${mode.name}") },
-                                    shape = RoundedCornerShape(12.dp),
+                                    label = "${mode.emoji} ${mode.name}",
                                 )
                             }
                         }
@@ -424,7 +420,7 @@ private fun HooksDialog(onDismiss: () -> Unit) {
                         "app. Turn this on and Yoinker keeps a quiet, permanent notification so those " +
                         "routines still fire when it's closed.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = YkInkFaint,
+                    color = Yk.InkFaint,
                 )
                 Spacer(Modifier.height(6.dp))
                 ToggleRow("Watch for triggers in the background", watching) {
@@ -438,7 +434,7 @@ private fun HooksDialog(onDismiss: () -> Unit) {
                     text = "Tasker, MacroDroid and Automate can drive Yoinker directly with broadcast " +
                         "intents — see docs/AUTOMATION.md in the project for the full list.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = YkInkFaint,
+                    color = Yk.InkFaint,
                 )
             }
         },

@@ -6,6 +6,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,13 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.pylo.yoinker.convert.ConvertService
 import com.pylo.yoinker.convert.ConvertState
 import com.pylo.yoinker.core.formatBytes
+import com.pylo.yoinker.core.formatDuration
 import com.pylo.yoinker.core.formatEta
 import com.pylo.yoinker.core.hostOf
 import com.pylo.yoinker.download.Exporter
@@ -40,10 +37,7 @@ import com.pylo.yoinker.download.Queue
 import com.pylo.yoinker.download.YoinkJob
 import com.pylo.yoinker.download.YoinkService
 import com.pylo.yoinker.engine.Converter
-import com.pylo.yoinker.ui.theme.YkEmber
-import com.pylo.yoinker.ui.theme.YkGold
-import com.pylo.yoinker.ui.theme.YkGreen
-import com.pylo.yoinker.ui.theme.YkInkFaint
+import com.pylo.yoinker.ui.theme.Yk
 
 @Composable
 fun QueuePane() {
@@ -51,52 +45,40 @@ fun QueuePane() {
     val jobs by Queue.jobs.collectAsState()
     val paused by Queue.paused.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = {
-                if (paused) {
-                    Queue.setPaused(false)
-                    if (Queue.pendingCount() > 0) YoinkService.kick(context.applicationContext)
-                } else {
-                    Queue.setPaused(true)
-                    YoinkService.kick(context.applicationContext, YoinkService.ACTION_PAUSE)
+    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        if (jobs.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextAction(if (paused) "▶   Resume queue" else "⏸   Pause queue") {
+                    if (paused) {
+                        Queue.setPaused(false)
+                        if (Queue.pendingCount() > 0) YoinkService.kick(context.applicationContext)
+                    } else {
+                        Queue.setPaused(true)
+                        YoinkService.kick(context.applicationContext, YoinkService.ACTION_PAUSE)
+                    }
                 }
-            }) {
-                Text(if (paused) "▶  Resume queue" else "⏸  Pause queue", color = YkGold)
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            if (jobs.any { it.isFinished }) {
-                TextButton(onClick = { Queue.clearFinished() }) {
-                    Text("Clear finished", color = YkInkFaint)
+                Spacer(Modifier.weight(1f))
+                if (jobs.any { it.isFinished }) {
+                    TextAction("Clear finished", tint = Yk.InkFaint) { Queue.clearFinished() }
                 }
             }
         }
 
         if (jobs.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text("Nothing queued", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = "Share a link to Yoinker, or paste one on the Yoink tab.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = YkInkFaint,
-                )
-            }
+            EmptyState(
+                mark = "🪝",
+                title = "Nothing queued",
+                body = "Share a link to Yoinker, or paste one on the Yoink tab.",
+            )
             return@Column
         }
 
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         ) {
             items(jobs.reversed(), key = { it.id }) { job ->
                 JobCard(job = job, onOpen = { open(context, job) })
@@ -108,98 +90,94 @@ fun QueuePane() {
 @Composable
 private fun JobCard(job: YoinkJob, onOpen: () -> Unit) {
     val context = LocalContext.current
+    val running = job.state == JobState.RUNNING
 
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    YkCard(
+        brush = if (running) Yk.raisedCard else Yk.card,
+        border = if (running) Yk.GoldDeep else Yk.Line,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(14.dp)) {
-            Text(
-                text = job.label,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Thumb(
+                url = job.thumbnail,
+                duration = formatDuration(job.durationSec),
             )
+            Spacer(Modifier.height(0.dp))
+            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                Text(
+                    text = job.label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Yk.Ink,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = "${job.format.label} · ${job.quality} · ${hostOf(job.url).ifEmpty { "link" }}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Yk.InkFaint,
+                )
+            }
+        }
+
+        if (running) {
+            Spacer(Modifier.height(14.dp))
+            YkProgress(fraction = job.progress / 100f, indeterminate = job.progress <= 0f)
             Text(
-                text = "${job.format.label} · ${job.quality} · ${hostOf(job.url).ifEmpty { "link" }}",
+                text = buildString {
+                    append("${job.progress.toInt()}%")
+                    formatEta(job.etaSeconds).takeIf { it.isNotEmpty() }?.let { append("  ·  $it") }
+                },
                 style = MaterialTheme.typography.bodyMedium,
-                color = YkInkFaint,
+                color = Yk.InkSoft,
+                modifier = Modifier.padding(top = 7.dp),
             )
+        }
 
-            if (job.state == JobState.RUNNING) {
-                Spacer(Modifier.height(10.dp))
-                LinearProgressIndicator(
-                    progress = { (job.progress / 100f).coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    text = buildString {
-                        append("${job.progress.toInt()}%")
-                        formatEta(job.etaSeconds).takeIf { it.isNotEmpty() }?.let { append(" · $it") }
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = YkInkFaint,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
+        when (job.state) {
+            JobState.QUEUED -> StatusLine("Waiting", Yk.InkFaint)
+            JobState.DONE -> StatusLine(
+                "✓  Saved" + (job.sizeBytes.takeIf { it > 0 }?.let { "  ·  ${formatBytes(it)}" } ?: ""),
+                Yk.Green,
+            )
+            JobState.FAILED -> StatusLine("⚠  ${job.error ?: "Failed"}", Yk.Ember)
+            JobState.CANCELED -> StatusLine("Stopped", Yk.InkFaint)
+            JobState.RUNNING -> Unit
+        }
 
-            val status = when (job.state) {
-                JobState.QUEUED -> "Waiting"
-                JobState.RUNNING -> null
-                JobState.DONE -> "✓ Saved${job.sizeBytes.takeIf { it > 0 }?.let { " · ${formatBytes(it)}" } ?: ""}" +
-                    (job.warning?.let { "\n⚠ $it" } ?: "")
-                JobState.FAILED -> "⚠ ${job.error ?: "Failed"}"
-                JobState.CANCELED -> "Stopped"
-            }
-            if (status != null) {
-                Text(
-                    text = status,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = when (job.state) {
-                        JobState.DONE -> YkGreen
-                        JobState.FAILED -> YkEmber
-                        else -> YkInkFaint
-                    },
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-            }
+        job.warning?.let { StatusLine("⚠  $it", Yk.Ember) }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                when (job.state) {
-                    JobState.RUNNING -> TextButton(onClick = {
-                        YoinkService.kick(
-                            context.applicationContext,
-                            YoinkService.ACTION_CANCEL_JOB,
-                            job.id,
-                        )
-                    }) { Text("Stop", color = YkGold) }
+        Spacer(Modifier.height(6.dp))
 
-                    JobState.QUEUED -> TextButton(onClick = {
-                        Queue.setPaused(false)
-                        YoinkService.kick(context.applicationContext)
-                    }) { Text("Start now", color = YkGold) }
-
-                    JobState.DONE -> TextButton(onClick = onOpen) { Text("Open", color = YkGold) }
-
-                    else -> TextButton(onClick = { Queue.retry(job.id) }) { Text("Retry", color = YkGold) }
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            when (job.state) {
+                JobState.RUNNING -> TextAction("Stop") {
+                    YoinkService.kick(context.applicationContext, YoinkService.ACTION_CANCEL_JOB, job.id)
                 }
 
-                // A file that came out in a codec this phone won't draw can be
-                // re-encoded in place rather than downloaded again.
-                if (job.warning != null && job.savedUri != null) {
-                    TextButton(onClick = {
-                        ConvertState.setSource(Uri.parse(job.savedUri), job.savedName.orEmpty())
-                        ConvertService.start(context, Uri.parse(job.savedUri), Converter.Target.Mp4())
-                        Toast.makeText(context, "Converting so it plays…", Toast.LENGTH_SHORT).show()
-                    }) { Text("Make it playable", color = YkGold) }
+                JobState.QUEUED -> TextAction("Start now") {
+                    Queue.setPaused(false)
+                    YoinkService.kick(context.applicationContext)
                 }
 
-                if (job.state != JobState.RUNNING) {
-                    TextButton(onClick = { Queue.remove(job.id) }) {
-                        Text("Remove", color = YkInkFaint)
-                    }
+                JobState.DONE -> TextAction("Open", onClick = onOpen)
+
+                else -> TextAction("Retry") { Queue.retry(job.id) }
+            }
+
+            // A file that came out in a codec this phone won't draw can be
+            // re-encoded in place rather than downloaded again.
+            if (job.warning != null && job.savedUri != null) {
+                TextAction("Make it playable") {
+                    val uri = Uri.parse(job.savedUri)
+                    ConvertState.setSource(uri, job.savedName.orEmpty())
+                    ConvertService.start(context, uri, Converter.Target.Mp4())
+                    Toast.makeText(context, "Converting so it plays…", Toast.LENGTH_SHORT).show()
                 }
+            }
+
+            if (!running) {
+                TextAction("Remove", tint = Yk.InkFaint) { Queue.remove(job.id) }
             }
         }
     }

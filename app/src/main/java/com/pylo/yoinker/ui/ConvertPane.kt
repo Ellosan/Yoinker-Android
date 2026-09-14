@@ -5,6 +5,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,17 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,15 +37,12 @@ import com.pylo.yoinker.core.formatBytes
 import com.pylo.yoinker.core.formatDuration
 import com.pylo.yoinker.download.Exporter
 import com.pylo.yoinker.engine.Converter
-import com.pylo.yoinker.ui.theme.YkEmber
-import com.pylo.yoinker.ui.theme.YkGold
-import com.pylo.yoinker.ui.theme.YkGreen
-import com.pylo.yoinker.ui.theme.YkInkFaint
+import com.pylo.yoinker.ui.theme.Yk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private val MP3_BITRATES = listOf("320K" to "320 kbps", "192K" to "192 kbps", "128K" to "128 kbps")
-private val MP4_HEIGHTS = listOf(0 to "Original size", 1080 to "1080p", 720 to "720p", 480 to "480p")
+private val MP4_HEIGHTS = listOf(0 to "Original", 1080 to "1080p", 720 to "720p", 480 to "480p")
 
 @Composable
 fun ConvertPane() {
@@ -83,71 +73,80 @@ fun ConvertPane() {
         }
     }
 
+    val working = phase is ConvertState.Phase.Working
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
-            .padding(bottom = 24.dp),
+            .padding(bottom = 28.dp),
     ) {
         Text(
-            text = "Turn a file you already have into an MP3, or into video the phone " +
-                "will actually play. Runs on this device — nothing is uploaded.",
+            text = "Convert\nwhat you have.",
+            style = MaterialTheme.typography.displaySmall,
+            color = Yk.Ink,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        Text(
+            text = "Pull the audio out as an MP3, or turn a video the phone won't play " +
+                "into one it will. Nothing is uploaded.",
             style = MaterialTheme.typography.bodyMedium,
-            color = YkInkFaint,
+            color = Yk.InkFaint,
             modifier = Modifier.padding(top = 8.dp),
         )
 
         SectionLabel("File")
-        OutlinedButton(
-            onClick = { picker.launch(arrayOf("video/*", "audio/*")) },
-            enabled = phase !is ConvertState.Phase.Working,
-            shape = RoundedCornerShape(12.dp),
+        GhostButton(
+            text = info?.name?.takeIf { it.isNotBlank() }?.take(38) ?: "Choose a video or audio file…",
+            enabled = !working,
+            tint = if (info == null) Yk.InkSoft else Yk.GoldBright,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(info?.name?.takeIf { it.isNotBlank() } ?: "Choose a video or audio file…")
+            picker.launch(arrayOf("video/*", "audio/*"))
         }
 
-        info?.let { SourceCard(it) }
+        AnimatedVisibility(visible = info != null) {
+            info?.let { SourceCard(it) }
+        }
 
         if (info != null) {
             SectionLabel("Convert to")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                FilterChip(
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                Pill(
+                    label = "🎬   Playable MP4",
                     selected = target is Converter.Target.Mp4,
+                    enabled = info?.hasVideo == true && !working,
                     onClick = { ConvertState.setTarget(Converter.Target.Mp4()) },
-                    label = { Text("🎬  Playable MP4") },
-                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.weight(1f),
-                    enabled = info?.hasVideo == true,
                 )
-                FilterChip(
+                Pill(
+                    label = "🎵   MP3",
                     selected = target is Converter.Target.Mp3,
+                    enabled = !working,
                     onClick = { ConvertState.setTarget(Converter.Target.Mp3()) },
-                    label = { Text("🎵  MP3") },
-                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.weight(1f),
                 )
             }
 
             SectionLabel(if (target is Converter.Target.Mp3) "Bitrate" else "Size")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 when (val t = target) {
                     is Converter.Target.Mp3 -> MP3_BITRATES.forEach { (value, label) ->
-                        FilterChip(
+                        Pill(
+                            label = label,
                             selected = t.bitrate == value,
+                            enabled = !working,
                             onClick = { ConvertState.setTarget(Converter.Target.Mp3(value)) },
-                            label = { Text(label) },
-                            shape = RoundedCornerShape(12.dp),
                         )
                     }
 
                     is Converter.Target.Mp4 -> MP4_HEIGHTS.forEach { (value, label) ->
-                        FilterChip(
+                        Pill(
+                            label = label,
                             selected = t.maxHeight == value,
+                            enabled = !working,
                             onClick = { ConvertState.setTarget(Converter.Target.Mp4(value)) },
-                            label = { Text(label) },
-                            shape = RoundedCornerShape(12.dp),
                         )
                     }
                 }
@@ -155,15 +154,16 @@ fun ConvertPane() {
 
             if (target is Converter.Target.Mp4 && info?.looksPlayable == true) {
                 Text(
-                    text = "This one already plays. Converting is only worth it to shrink it.",
+                    text = "This one already plays — converting is only worth it to shrink it.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = YkInkFaint,
-                    modifier = Modifier.padding(top = 10.dp),
+                    color = Yk.InkFaint,
+                    modifier = Modifier.padding(top = 12.dp),
                 )
             }
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(26.dp))
+
         PhaseView(phase = phase, canStart = info != null) {
             val uri = source ?: return@PhaseView
             ConvertState.set(ConvertState.Phase.Working(0f))
@@ -176,37 +176,42 @@ fun ConvertPane() {
 
 @Composable
 private fun SourceCard(info: SourceInfo) {
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    val broken = info.hasVideo && !info.looksPlayable
+
+    YkCard(
+        brush = if (broken) Yk.emberFaint else Yk.card,
+        border = if (broken) Yk.Ember.copy(alpha = 0.5f) else Yk.Line,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 12.dp),
+            .padding(top = 14.dp),
     ) {
-        Column(Modifier.padding(14.dp)) {
-            Text(
-                text = info.name,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val bits = buildList {
+        Text(
+            text = info.name,
+            style = MaterialTheme.typography.titleMedium,
+            color = Yk.Ink,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            text = buildList {
                 info.videoCodecName?.let { add(it) }
                 if (info.width > 0) add("${info.width}×${info.height}")
                 formatDuration(info.durationSec.toInt()).takeIf { it.isNotEmpty() }?.let { add(it) }
                 formatBytes(info.sizeBytes).takeIf { it.isNotEmpty() }?.let { add(it) }
-            }
-            Text(bits.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = YkInkFaint)
+            }.joinToString("  ·  "),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Yk.InkFaint,
+        )
 
-            if (info.hasVideo && !info.looksPlayable) {
-                Text(
-                    text = "⚠ ${info.videoCodecName} video — this is the kind most players " +
-                        "show as a blank screen. Converting to MP4 fixes it.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = YkEmber,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
+        if (broken) {
+            Text(
+                text = "⚠  ${info.videoCodecName} video — the kind most players show as a " +
+                    "blank screen. Converting to MP4 fixes it.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Yk.Ink,
+                modifier = Modifier.padding(top = 10.dp),
+            )
         }
     }
 }
@@ -217,48 +222,56 @@ private fun PhaseView(phase: ConvertState.Phase, canStart: Boolean, onStart: () 
 
     when (phase) {
         is ConvertState.Phase.Working -> {
-            LinearProgressIndicator(
-                progress = { (phase.percent / 100f).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            YkProgress(fraction = phase.percent / 100f, indeterminate = phase.percent <= 0f)
             Text(
-                text = if (phase.percent <= 0f) "Starting…" else "Converting… ${phase.percent.toInt()}%",
+                text = if (phase.percent <= 0f) "Starting…" else "Converting…  ${phase.percent.toInt()}%",
                 style = MaterialTheme.typography.bodyMedium,
-                color = YkInkFaint,
-                modifier = Modifier.padding(top = 8.dp),
+                color = Yk.InkSoft,
+                modifier = Modifier.padding(top = 9.dp),
             )
-            TextButton(onClick = { ConvertService.stop(context) }) { Text("Stop", color = YkGold) }
+            Spacer(Modifier.height(8.dp))
+            TextAction("Stop") { ConvertService.stop(context) }
         }
 
         is ConvertState.Phase.Done -> {
-            Text("✓ Saved ${phase.displayName}", style = MaterialTheme.typography.titleMedium, color = YkGreen)
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                phase.savedUri?.let { saved ->
-                    TextButton(onClick = { open(context, saved, phase.displayName) }) {
-                        Text("Open", color = YkGold)
+            YkCard(modifier = Modifier.fillMaxWidth()) {
+                Text("✓  Saved", style = MaterialTheme.typography.titleMedium, color = Yk.Green)
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = phase.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Yk.InkFaint,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    phase.savedUri?.let { saved ->
+                        TextAction("Open") { open(context, saved, phase.displayName) }
                     }
+                    TextAction("Convert another", tint = Yk.InkFaint) { ConvertState.clear() }
                 }
-                TextButton(onClick = { ConvertState.clear() }) { Text("Convert another", color = YkInkFaint) }
             }
         }
 
         is ConvertState.Phase.Failed -> {
-            Text("⚠ ${phase.message}", style = MaterialTheme.typography.bodyMedium, color = YkEmber)
-            Spacer(Modifier.height(10.dp))
-            Button(
-                onClick = onStart,
-                enabled = canStart,
-                shape = RoundedCornerShape(14.dp),
+            YkCard(
+                brush = Yk.emberFaint,
+                border = Yk.Ember.copy(alpha = 0.5f),
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Try again") }
+            ) {
+                Text("⚠  ${phase.message}", style = MaterialTheme.typography.bodyMedium, color = Yk.Ink)
+            }
+            Spacer(Modifier.height(12.dp))
+            GoldButton("Try again", enabled = canStart, modifier = Modifier.fillMaxWidth(), onClick = onStart)
         }
 
-        else -> Button(
-            onClick = onStart,
+        else -> GoldButton(
+            text = "⚙   Convert",
             enabled = canStart,
-            shape = RoundedCornerShape(14.dp),
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("⚙  Convert") }
+            onClick = onStart,
+        )
     }
 }
 
