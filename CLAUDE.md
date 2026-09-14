@@ -9,8 +9,8 @@ fine; the session link is not.
 
 ## Building
 
-- Needs the Android SDK with **API 36** and JDK 17. Put `sdk.dir=…` in
-  `local.properties`.
+- Needs the Android SDK with **API 36** and **JDK 21** (Paparazzi requires it; the
+  app still targets JVM 17 bytecode). Put `sdk.dir=…` in `local.properties`.
 - `./gradlew assembleDebug` builds one APK per ABI plus a universal one. The
   universal build is ~240 MB because each architecture carries its own python and
   ffmpeg — pass `-Pyoinker.universalApk=false` to skip it, as CI does.
