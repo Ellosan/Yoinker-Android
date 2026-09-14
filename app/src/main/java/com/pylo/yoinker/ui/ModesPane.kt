@@ -194,6 +194,9 @@ private fun ModeEditor(mode: Mode, onDismiss: () -> Unit, onSave: (Mode) -> Unit
                     draft = draft.copy(holdInQueue = it, instantShare = if (it) false else draft.instantShare)
                 }
                 ToggleRow("Silent notifications", draft.quiet) { draft = draft.copy(quiet = it) }
+                ToggleRow("Convert videos the phone can't play", draft.forcePlayable) {
+                    draft = draft.copy(forcePlayable = it)
+                }
             }
         },
     )

@@ -20,6 +20,8 @@ object Notifications {
     const val ID_PROGRESS = 1001
     const val ID_WATCHER = 1002
     const val ID_BLOCKED = 1003
+    const val ID_CONVERT = 1004
+    const val ID_CONVERT_RESULT = 1005
     const val ID_RESULT_BASE = 2000
 
     fun createChannels(context: Context) {

@@ -20,6 +20,7 @@ import com.pylo.yoinker.core.Device
 import com.pylo.yoinker.core.Fmt
 import com.pylo.yoinker.core.Notifications
 import com.pylo.yoinker.core.formatBytes
+import com.pylo.yoinker.engine.Converter
 import com.pylo.yoinker.engine.Mp4Probe
 import com.pylo.yoinker.engine.YoinkEngine
 import com.pylo.yoinker.ui.MainActivity
@@ -152,19 +153,9 @@ class YoinkService : Service() {
         // A file can be valid and still show nothing — VP9 or AV1 inside an MP4 is
         // legal, and most Android players won't draw it. The format selector should
         // have ruled that out; this catches the source that leaves no other choice.
-        val warning = if (job.format.isAudio) {
-            null
-        } else {
-            val codec = Mp4Probe.videoCodec(file)
-            if (Mp4Probe.isStockPlayable(codec)) {
-                null
-            } else {
-                "This one is ${Mp4Probe.codecName(codec)} video — the source offered nothing " +
-                    "else, and some players will show no picture."
-            }
-        }
+        val checked = makePlayable(job, file)
 
-        val saved = runCatching { Exporter.export(applicationContext, file, job.format) }
+        val saved = runCatching { Exporter.export(applicationContext, checked.file, job.format) }
         File(cacheDir, "yoink/${job.id}").deleteRecursively()
 
         saved.onSuccess { out ->
@@ -176,11 +167,11 @@ class YoinkService : Service() {
                     savedUri = out.uri?.toString(),
                     savedName = out.displayName,
                     sizeBytes = out.sizeBytes,
-                    warning = warning,
+                    warning = checked.warning,
                 )
             }
             val text = "${out.displayName} · ${formatBytes(out.sizeBytes)}" +
-                (warning?.let { "\n⚠ $it" } ?: "")
+                (checked.warning?.let { "\n⚠ $it" } ?: "")
             postResult(job, ok = true, text = text, uri = out.uri)
             RoutineEngine.fire(applicationContext, TriggerKind.DOWNLOAD_FINISHED)
         }.onFailure { error ->
@@ -189,6 +180,60 @@ class YoinkService : Service() {
             postResult(job, ok = false, text = message, uri = null)
             RoutineEngine.fire(applicationContext, TriggerKind.DOWNLOAD_FAILED)
         }
+    }
+
+    private data class Checked(val file: File, val warning: String?)
+
+    /**
+     * Nothing should arrive as a file that plays its audio over a blank screen. If
+     * the source only offered a codec stock players won't draw, re-encode it here
+     * rather than hand it over broken — the converter is already on the device.
+     */
+    private fun makePlayable(job: YoinkJob, file: File): Checked {
+        if (job.format.isAudio) return Checked(file, null)
+
+        val codec = Mp4Probe.videoCodec(file)
+        if (Mp4Probe.isStockPlayable(codec)) return Checked(file, null)
+
+        val name = Mp4Probe.codecName(codec)
+        if (!Automation.modeById(job.modeId).forcePlayable) {
+            return Checked(
+                file,
+                "This one is $name video — the source offered nothing else, and some " +
+                    "players will show no picture. Convert it to fix that.",
+            )
+        }
+
+        notifyProgress(job.label, 0f, "Converting so it plays…")
+        val converted = Converter.convert(
+            context = applicationContext,
+            input = file,
+            target = Converter.Target.Mp4(),
+            workDir = File(cacheDir, "yoink/${job.id}/fixed"),
+            displayName = file.nameWithoutExtension,
+        ) { percent ->
+            throttledConvert(job.label, percent)
+        }
+
+        return converted.fold(
+            onSuccess = { Checked(it, null) },
+            // Better a file that at least carries the audio, with an honest note,
+            // than nothing at all.
+            onFailure = {
+                Checked(
+                    file,
+                    "This one is $name video and converting it didn't work — some players " +
+                        "will show no picture.",
+                )
+            },
+        )
+    }
+
+    private fun throttledConvert(title: String, percent: Float) {
+        val now = System.currentTimeMillis()
+        if (now - lastNotifyAt < 700) return
+        lastNotifyAt = now
+        notifyProgress(title, percent, "Converting so it plays… ${percent.toInt()}%")
     }
 
     /** Best-effort: a title makes the notification readable, it isn't worth failing over. */

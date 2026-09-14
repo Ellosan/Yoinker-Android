@@ -3,6 +3,7 @@
     <string name="app_name">Yoinker</string>
     <string name="share_label">Yoink</string>
     <string name="tile_label">Yoink link</string>
+    <string name="convert_label">Convert with Yoinker</string>
 
     <string name="alias_yoink_clipboard">Yoinker: yoink clipboard</string>
     <string name="alias_start_queue">Yoinker: start queue</string>

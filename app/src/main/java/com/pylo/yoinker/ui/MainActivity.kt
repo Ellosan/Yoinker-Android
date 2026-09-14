@@ -3,6 +3,7 @@ package com.pylo.yoinker.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Transform
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material3.Badge
@@ -41,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.pylo.yoinker.automation.Automation
+import com.pylo.yoinker.convert.ConvertState
 import com.pylo.yoinker.core.Prefs
 import com.pylo.yoinker.download.Queue
 import com.pylo.yoinker.ui.theme.YkGold
@@ -58,9 +61,11 @@ class MainActivity : ComponentActivity() {
         Prefs.init(this)
         askForPermissions()
 
+        val startTab = if (takeSharedMedia(intent)) Tab.CONVERT else tabFromIntent(intent)
+
         setContent {
             YoinkerTheme {
-                YoinkerRoot(startTab = tabFromIntent(intent))
+                YoinkerRoot(startTab = startTab)
             }
         }
     }
@@ -68,10 +73,32 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        takeSharedMedia(intent)
+    }
+
+    /**
+     * A media file shared to Yoinker is something to convert — a link is what the
+     * share sheet's "Yoink" entry handles, and that goes to ShareActivity instead.
+     */
+    private fun takeSharedMedia(intent: Intent?): Boolean {
+        if (intent?.action != Intent.ACTION_SEND) return false
+        val type = intent.type.orEmpty()
+        if (!type.startsWith("video/") && !type.startsWith("audio/")) return false
+
+        val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+        } ?: return false
+
+        ConvertState.setSource(uri, "")
+        return true
     }
 
     private fun tabFromIntent(intent: Intent?): Tab = when (intent?.getStringExtra("tab")) {
         "queue" -> Tab.QUEUE
+        "convert" -> Tab.CONVERT
         "modes" -> Tab.MODES
         "routines" -> Tab.ROUTINES
         else -> Tab.YOINK
@@ -98,6 +125,7 @@ class MainActivity : ComponentActivity() {
 enum class Tab(val label: String, val icon: ImageVector) {
     YOINK("Yoink", Icons.Outlined.Download),
     QUEUE("Queue", Icons.Outlined.ViewList),
+    CONVERT("Convert", Icons.Outlined.Transform),
     MODES("Modes", Icons.Outlined.Tune),
     ROUTINES("Routines", Icons.Outlined.Bolt),
 }
@@ -150,6 +178,7 @@ fun YoinkerRoot(startTab: Tab) {
                 when (tab) {
                     Tab.YOINK -> YoinkPane()
                     Tab.QUEUE -> QueuePane()
+                    Tab.CONVERT -> ConvertPane()
                     Tab.MODES -> ModesPane()
                     Tab.ROUTINES -> RoutinesPane()
                 }

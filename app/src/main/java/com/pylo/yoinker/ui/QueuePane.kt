@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.pylo.yoinker.convert.ConvertService
+import com.pylo.yoinker.convert.ConvertState
 import com.pylo.yoinker.core.formatBytes
 import com.pylo.yoinker.core.formatEta
 import com.pylo.yoinker.core.hostOf
@@ -37,6 +39,7 @@ import com.pylo.yoinker.download.JobState
 import com.pylo.yoinker.download.Queue
 import com.pylo.yoinker.download.YoinkJob
 import com.pylo.yoinker.download.YoinkService
+import com.pylo.yoinker.engine.Converter
 import com.pylo.yoinker.ui.theme.YkEmber
 import com.pylo.yoinker.ui.theme.YkGold
 import com.pylo.yoinker.ui.theme.YkGreen
@@ -180,6 +183,16 @@ private fun JobCard(job: YoinkJob, onOpen: () -> Unit) {
                     JobState.DONE -> TextButton(onClick = onOpen) { Text("Open", color = YkGold) }
 
                     else -> TextButton(onClick = { Queue.retry(job.id) }) { Text("Retry", color = YkGold) }
+                }
+
+                // A file that came out in a codec this phone won't draw can be
+                // re-encoded in place rather than downloaded again.
+                if (job.warning != null && job.savedUri != null) {
+                    TextButton(onClick = {
+                        ConvertState.setSource(Uri.parse(job.savedUri), job.savedName.orEmpty())
+                        ConvertService.start(context, Uri.parse(job.savedUri), Converter.Target.Mp4())
+                        Toast.makeText(context, "Converting so it plays…", Toast.LENGTH_SHORT).show()
+                    }) { Text("Make it playable", color = YkGold) }
                 }
 
                 if (job.state != JobState.RUNNING) {

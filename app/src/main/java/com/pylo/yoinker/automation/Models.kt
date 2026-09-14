@@ -24,6 +24,8 @@ data class Mode(
     val holdInQueue: Boolean = false,
     /** No sound for finished files. */
     val quiet: Boolean = false,
+    /** Re-encode a download the phone couldn't otherwise play, instead of warning. */
+    val forcePlayable: Boolean = true,
     val builtIn: Boolean = false,
 ) {
     val summary: String
