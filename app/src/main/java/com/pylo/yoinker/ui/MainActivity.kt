@@ -31,11 +31,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Transform
-import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material.icons.outlined.ViewList
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.AutoFixHigh
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.ViewList
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -48,13 +48,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pylo.yoinker.automation.Automation
 import com.pylo.yoinker.convert.ConvertState
 import com.pylo.yoinker.core.Prefs
 import com.pylo.yoinker.download.Queue
+import com.pylo.yoinker.R
+import com.pylo.yoinker.ui.theme.Motion
+import com.pylo.yoinker.ui.theme.Space
 import com.pylo.yoinker.ui.theme.Yk
 import com.pylo.yoinker.ui.theme.YoinkerTheme
 
@@ -132,11 +138,11 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Tab(val label: String, val icon: ImageVector) {
-    YOINK("Yoink", Icons.Outlined.Download),
-    QUEUE("Queue", Icons.Outlined.ViewList),
-    CONVERT("Convert", Icons.Outlined.Transform),
-    MODES("Modes", Icons.Outlined.Tune),
-    ROUTINES("Routines", Icons.Outlined.Bolt),
+    YOINK("Yoink", Icons.Rounded.Download),
+    QUEUE("Queue", Icons.Rounded.ViewList),
+    CONVERT("Convert", Icons.Rounded.AutoFixHigh),
+    MODES("Modes", Icons.Rounded.Tune),
+    ROUTINES("Routines", Icons.Rounded.Bolt),
 }
 
 @Composable
@@ -181,22 +187,17 @@ private fun Header(modeLabel: String, onModeClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 10.dp),
+            .padding(start = Space.gutter, end = Space.gutter, top = Space.md, bottom = Space.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // The mark, in its own lit tile.
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(13.dp))
-                .background(Yk.raisedCard)
-                .border(BorderStroke(1.dp, Yk.Line), RoundedCornerShape(13.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("🪝", style = MaterialTheme.typography.titleMedium)
-        }
+        // The app's own mark, not an emoji: emoji render in their own colours and
+        // would be the one thing on screen ignoring the palette.
+        IconTile(
+            icon = ImageVector.vectorResource(R.drawable.ic_yoink),
+            size = 40.dp,
+        )
 
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Space.md))
 
         Text(
             text = "Yoinker",
@@ -231,13 +232,13 @@ private fun NavBar(current: Tab, pending: Int, onSelect: (Tab) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Yk.Panel.copy(alpha = 0.94f)),
+            .background(Yk.Surface1),
     ) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(Yk.Line),
+                .background(Yk.Hairline),
         )
         Row(
             modifier = Modifier
@@ -275,11 +276,17 @@ private fun NavItem(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(contentAlignment = Alignment.Center) {
+            val indicator by animateFloatAsState(
+                targetValue = if (selected) 1f else 0f,
+                animationSpec = Motion.spring(),
+                label = "navIndicator",
+            )
             Box(
                 modifier = Modifier
-                    .size(width = 44.dp, height = 28.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (selected) Yk.goldFaint else Yk.transparent),
+                    .size(width = 46.dp, height = 30.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .alpha(indicator)
+                    .background(Yk.goldFaint),
             )
             Icon(
                 imageVector = tab.icon,

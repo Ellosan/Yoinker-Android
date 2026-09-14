@@ -78,6 +78,17 @@ the rest all switch Do Not Disturb on, and the built-in routines above react to 
 Tasker, MacroDroid and Automate can drive Yoinker directly with broadcast intents.
 **[docs/AUTOMATION.md](docs/AUTOMATION.md)** has the full list.
 
+## How it looks
+
+Charred wood and gold, carried over from the desktop build. Screen titles are set in
+Space Grotesk and the interface in Inter, both bundled under the SIL Open Font
+Licence — see [licenses/](licenses/). Text that comes from a website keeps the
+system font on purpose: neither family covers every script, and a Japanese title set
+in a Latin-only face is a row of empty boxes.
+
+`./gradlew recordPaparazziDebug` renders the screens to PNGs without a device, which
+is how the design gets checked rather than assumed.
+
 ## Build it
 
 You need the Android SDK (API 36) and JDK 17+.

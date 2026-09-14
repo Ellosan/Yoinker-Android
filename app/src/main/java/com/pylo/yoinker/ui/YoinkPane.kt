@@ -3,9 +3,9 @@ package com.pylo.yoinker.ui
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,6 +19,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.PlaylistAdd
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -46,7 +52,9 @@ import com.pylo.yoinker.download.Queue
 import com.pylo.yoinker.download.YoinkJob
 import com.pylo.yoinker.download.YoinkService
 import com.pylo.yoinker.engine.YoinkEngine
+import com.pylo.yoinker.ui.theme.Space
 import com.pylo.yoinker.ui.theme.Yk
+import com.pylo.yoinker.ui.theme.asContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -95,55 +103,66 @@ fun YoinkPane() {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 28.dp),
+            .padding(horizontal = Space.gutter)
+            .padding(bottom = Space.xxl),
     ) {
-        Text(
-            text = "Paste a link,\nget a clean file.",
-            style = MaterialTheme.typography.displaySmall,
-            color = Yk.Ink,
-            modifier = Modifier.padding(top = 6.dp),
-        )
-        Text(
-            text = "No sketchy converter sites. Runs on this phone.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Yk.InkFaint,
-            modifier = Modifier.padding(top = 8.dp),
+        ScreenTitle(
+            title = "Paste a link,\nget a clean file.",
+            subtitle = "No sketchy converter sites. All of it runs here.",
         )
 
-        AnimatedVisibility(visible = engineState is YoinkEngine.State.Preparing || engineState is YoinkEngine.State.Failed) {
-            Banner(
-                text = when (val s = engineState) {
-                    is YoinkEngine.State.Failed -> "⚠  ${s.message}"
-                    else -> "Getting the download engine ready — first launch only."
-                },
-                error = engineState is YoinkEngine.State.Failed,
-            )
+        AnimatedVisibility(
+            visible = engineState is YoinkEngine.State.Preparing || engineState is YoinkEngine.State.Failed,
+        ) {
+            val failed = engineState is YoinkEngine.State.Failed
+            YkCard(
+                brush = if (failed) Yk.emberFaint else Yk.card,
+                border = if (failed) Yk.Ember.copy(alpha = 0.45f) else Yk.Hairline,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Space.xl),
+            ) {
+                StatusChip(
+                    text = when (val s = engineState) {
+                        is YoinkEngine.State.Failed -> s.message
+                        else -> "Getting the download engine ready — first launch only."
+                    },
+                    tint = if (failed) Yk.Ember else Yk.InkSoft,
+                )
+            }
         }
 
         SectionLabel("Link")
         OutlinedTextField(
             value = url,
             onValueChange = { url = it },
-            placeholder = { Text("Paste a video or audio URL…", color = Yk.InkFaint) },
+            placeholder = {
+                Text(
+                    "Paste a video or audio URL",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Yk.InkFaint,
+                )
+            },
             singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            textStyle = MaterialTheme.typography.bodyLarge,
+            shape = RoundedCornerShape(18.dp),
+            textStyle = MaterialTheme.typography.bodyLarge.asContent(),
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Yk.GoldDeep,
-                unfocusedBorderColor = Yk.Line,
-                focusedContainerColor = Yk.PanelHigh,
-                unfocusedContainerColor = Yk.PanelHigh,
+                unfocusedBorderColor = Yk.Hairline,
+                focusedContainerColor = Yk.Surface2,
+                unfocusedContainerColor = Yk.Surface2,
                 cursorColor = Yk.Gold,
                 focusedTextColor = Yk.Ink,
                 unfocusedTextColor = Yk.Ink,
             ),
             trailingIcon = {
                 if (url.isNotEmpty()) {
-                    TextAction("Clear", tint = Yk.InkFaint) { url = "" }
+                    TextAction("Clear", icon = Icons.Rounded.Close, tint = Yk.InkFaint) { url = "" }
                 } else {
-                    TextAction("Paste") { url = clipboardText(context).orEmpty() }
+                    TextAction("Paste", icon = Icons.Rounded.ContentPaste) {
+                        url = clipboardText(context).orEmpty()
+                    }
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -157,7 +176,7 @@ fun YoinkPane() {
             LinkPreview(
                 url = extractUrl(url).orEmpty(),
                 state = peek,
-                modifier = Modifier.padding(top = 14.dp),
+                modifier = Modifier.padding(top = Space.lg),
             )
         }
 
@@ -170,41 +189,48 @@ fun YoinkPane() {
         SectionLabel("Quality")
         QualityPicker(format = format, quality = quality) { quality = it }
 
-        Spacer(Modifier.height(26.dp))
+        // The primary action gets room around it; that space is what makes it read
+        // as the answer rather than one more control.
+        Spacer(Modifier.height(Space.huge))
 
-        GoldButton(
-            text = "⬇   Yoink it",
+        PrimaryButton(
+            text = "Yoink it",
+            icon = Icons.Rounded.Download,
             enabled = ready,
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (enqueue(context, url, format, quality, mode.id, start = true)) url = ""
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Space.md))
 
-        GhostButton(
+        SecondaryButton(
             text = "Add to queue",
+            icon = Icons.Rounded.PlaylistAdd,
             enabled = ready,
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (enqueue(context, url, format, quality, mode.id, start = false)) url = ""
         }
 
-        Spacer(Modifier.height(30.dp))
+        Spacer(Modifier.height(Space.huge))
 
         Text(
-            text = "Everything runs on this phone. The only thing that leaves is the request " +
-                "to the link you paste. For personal use — respect each site's terms and copyright.",
+            text = "The only thing that leaves this phone is the request to the link you " +
+                "paste. For personal use — respect each site's terms and copyright.",
             style = MaterialTheme.typography.bodyMedium,
             color = Yk.InkFaint,
         )
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(Space.xs),
+            modifier = Modifier.padding(top = Space.sm),
         ) {
-            TextAction(if (updating) "Updating…" else "⟳  Update engine") {
+            TextAction(
+                text = if (updating) "Updating…" else "Update engine",
+                icon = Icons.Rounded.Refresh,
+            ) {
                 if (updating) return@TextAction
                 updating = true
                 engineNote = ""
@@ -220,23 +246,6 @@ fun YoinkPane() {
                 Text(engineNote, style = MaterialTheme.typography.bodyMedium, color = Yk.InkFaint)
             }
         }
-    }
-}
-
-@Composable
-private fun Banner(text: String, error: Boolean) {
-    YkCard(
-        brush = if (error) Yk.emberFaint else Yk.card,
-        border = if (error) Yk.Ember.copy(alpha = 0.5f) else Yk.Line,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 18.dp),
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (error) Yk.Ink else Yk.InkSoft,
-        )
     }
 }
 

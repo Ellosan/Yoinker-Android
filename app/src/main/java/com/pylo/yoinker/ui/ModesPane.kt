@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,6 +39,7 @@ import com.pylo.yoinker.automation.Automation
 import com.pylo.yoinker.automation.Hooks
 import com.pylo.yoinker.automation.Mode
 import com.pylo.yoinker.core.Qualities
+import com.pylo.yoinker.ui.theme.Space
 import com.pylo.yoinker.ui.theme.Yk
 
 @Composable
@@ -46,23 +49,15 @@ fun ModesPane() {
     val activeId by Automation.activeModeId.collectAsState()
     var editing by remember { mutableStateOf<Mode?>(null) }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        Text(
-            text = "Modes",
-            style = MaterialTheme.typography.displaySmall,
-            color = Yk.Ink,
-            modifier = Modifier.padding(top = 6.dp),
-        )
-        Text(
-            text = "How Yoinker behaves right now — format, quality, and whether a shared " +
-                "link starts on its own. Routines switch between them for you.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Yk.InkFaint,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+    Column(Modifier.fillMaxSize().padding(horizontal = Space.gutter)) {
+        ScreenTitle(
+            title = "Modes",
+            subtitle = "How Yoinker behaves right now — format, quality, and whether a " +
+                "shared link starts on its own. Routines switch between them for you.",
         )
 
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(Space.md),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 14.dp),
             modifier = Modifier.weight(1f),
         ) {
@@ -88,8 +83,9 @@ fun ModesPane() {
 
             item {
                 Spacer(Modifier.height(4.dp))
-                GhostButton(
-                    text = "+   New mode",
+                SecondaryButton(
+                    text = "New mode",
+                    icon = Icons.Rounded.Add,
                     tint = Yk.GoldBright,
                     modifier = Modifier.fillMaxWidth(),
                 ) { editing = Mode(name = "New mode") }
@@ -163,7 +159,7 @@ private fun ModeEditor(mode: Mode, onDismiss: () -> Unit, onSave: (Mode) -> Unit
         title = { Text(if (mode.builtIn) "Duplicate mode" else "Mode") },
         text = {
             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
                     OutlinedTextField(
                         value = draft.emoji,
                         onValueChange = { draft = draft.copy(emoji = it.take(2)) },

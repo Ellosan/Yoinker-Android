@@ -15,6 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoFixHigh
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Inbox
+import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.pylo.yoinker.convert.ConvertService
 import com.pylo.yoinker.convert.ConvertState
 import com.pylo.yoinker.core.formatBytes
@@ -37,48 +45,63 @@ import com.pylo.yoinker.download.Queue
 import com.pylo.yoinker.download.YoinkJob
 import com.pylo.yoinker.download.YoinkService
 import com.pylo.yoinker.engine.Converter
+import com.pylo.yoinker.ui.theme.Space
 import com.pylo.yoinker.ui.theme.Yk
+import com.pylo.yoinker.ui.theme.asContent
 
 @Composable
 fun QueuePane() {
     val context = LocalContext.current
     val jobs by Queue.jobs.collectAsState()
     val paused by Queue.paused.collectAsState()
+    val pending = jobs.count { !it.isFinished }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        if (jobs.isNotEmpty()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextAction(if (paused) "▶   Resume queue" else "⏸   Pause queue") {
-                    if (paused) {
-                        Queue.setPaused(false)
-                        if (Queue.pendingCount() > 0) YoinkService.kick(context.applicationContext)
-                    } else {
-                        Queue.setPaused(true)
-                        YoinkService.kick(context.applicationContext, YoinkService.ACTION_PAUSE)
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                if (jobs.any { it.isFinished }) {
-                    TextAction("Clear finished", tint = Yk.InkFaint) { Queue.clearFinished() }
-                }
-            }
-        }
-
+    Column(Modifier.fillMaxSize().padding(horizontal = Space.gutter)) {
         if (jobs.isEmpty()) {
             EmptyState(
-                mark = "🪝",
+                icon = Icons.Rounded.Inbox,
                 title = "Nothing queued",
-                body = "Share a link to Yoinker, or paste one on the Yoink tab.",
+                body = "Share a link to Yoinker, or paste one yourself.",
             )
             return@Column
         }
 
+        ScreenTitle(
+            title = "Queue",
+            subtitle = when {
+                paused -> "Paused — nothing will start on its own."
+                pending > 0 -> "$pending waiting to be yoinked."
+                else -> "All done."
+            },
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = Space.md),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextAction(
+                text = if (paused) "Resume" else "Pause",
+                icon = if (paused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+            ) {
+                if (paused) {
+                    Queue.setPaused(false)
+                    if (Queue.pendingCount() > 0) YoinkService.kick(context.applicationContext)
+                } else {
+                    Queue.setPaused(true)
+                    YoinkService.kick(context.applicationContext, YoinkService.ACTION_PAUSE)
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            if (jobs.any { it.isFinished }) {
+                TextAction("Clear finished", icon = Icons.Rounded.Delete, tint = Yk.InkFaint) {
+                    Queue.clearFinished()
+                }
+            }
+        }
+
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(Space.md),
+            contentPadding = PaddingValues(top = Space.md, bottom = Space.xxl),
         ) {
             items(jobs.reversed(), key = { it.id }) { job ->
                 JobCard(job = job, onOpen = { open(context, job) })
@@ -94,81 +117,85 @@ private fun JobCard(job: YoinkJob, onOpen: () -> Unit) {
 
     YkCard(
         brush = if (running) Yk.raisedCard else Yk.card,
-        border = if (running) Yk.GoldDeep else Yk.Line,
+        border = if (running) Yk.GoldDeep else Yk.Hairline,
+        padding = Space.md,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Thumb(
-                url = job.thumbnail,
-                duration = formatDuration(job.durationSec),
-            )
-            Spacer(Modifier.height(0.dp))
-            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+            Thumb(url = job.thumbnail, duration = formatDuration(job.durationSec))
+
+            Column(Modifier.weight(1f).padding(start = Space.lg)) {
                 Text(
                     text = job.label,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium.asContent(),
                     color = Yk.Ink,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(Space.xs))
                 Text(
-                    text = "${job.format.label} · ${job.quality} · ${hostOf(job.url).ifEmpty { "link" }}",
+                    text = "${job.format.label}  ·  ${job.quality}  ·  ${hostOf(job.url).ifEmpty { "link" }}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Yk.InkFaint,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
 
         if (running) {
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(Space.lg))
             YkProgress(fraction = job.progress / 100f, indeterminate = job.progress <= 0f)
+            Spacer(Modifier.height(Space.sm))
             Text(
                 text = buildString {
                     append("${job.progress.toInt()}%")
-                    formatEta(job.etaSeconds).takeIf { it.isNotEmpty() }?.let { append("  ·  $it") }
+                    formatEta(job.etaSeconds).takeIf { it.isNotEmpty() }?.let { append("   ·   $it") }
                 },
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelMedium,
                 color = Yk.InkSoft,
-                modifier = Modifier.padding(top = 7.dp),
             )
-        }
-
-        when (job.state) {
-            JobState.QUEUED -> StatusLine("Waiting", Yk.InkFaint)
-            JobState.DONE -> StatusLine(
-                "✓  Saved" + (job.sizeBytes.takeIf { it > 0 }?.let { "  ·  ${formatBytes(it)}" } ?: ""),
-                Yk.Green,
-            )
-            JobState.FAILED -> StatusLine("⚠  ${job.error ?: "Failed"}", Yk.Ember)
-            JobState.CANCELED -> StatusLine("Stopped", Yk.InkFaint)
-            JobState.RUNNING -> Unit
-        }
-
-        job.warning?.let { StatusLine("⚠  $it", Yk.Ember) }
-
-        Spacer(Modifier.height(6.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        } else {
+            Spacer(Modifier.height(Space.md))
             when (job.state) {
-                JobState.RUNNING -> TextAction("Stop") {
+                JobState.QUEUED -> StatusChip("Waiting", Yk.InkFaint)
+                JobState.DONE -> StatusChip(
+                    "Saved" + (job.sizeBytes.takeIf { it > 0 }?.let { "  ·  ${formatBytes(it)}" } ?: ""),
+                    Yk.Green,
+                )
+                JobState.FAILED -> StatusChip(job.error ?: "Failed", Yk.Ember)
+                JobState.CANCELED -> StatusChip("Stopped", Yk.InkFaint)
+                JobState.RUNNING -> Unit
+            }
+        }
+
+        job.warning?.let {
+            Spacer(Modifier.height(Space.sm))
+            StatusChip(it, Yk.Ember)
+        }
+
+        Spacer(Modifier.height(Space.sm))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
+            when (job.state) {
+                JobState.RUNNING -> TextAction("Stop", icon = Icons.Rounded.Stop) {
                     YoinkService.kick(context.applicationContext, YoinkService.ACTION_CANCEL_JOB, job.id)
                 }
 
-                JobState.QUEUED -> TextAction("Start now") {
+                JobState.QUEUED -> TextAction("Start now", icon = Icons.Rounded.PlayArrow) {
                     Queue.setPaused(false)
                     YoinkService.kick(context.applicationContext)
                 }
 
-                JobState.DONE -> TextAction("Open", onClick = onOpen)
+                JobState.DONE -> TextAction("Open", icon = Icons.Rounded.OpenInNew, onClick = onOpen)
 
-                else -> TextAction("Retry") { Queue.retry(job.id) }
+                else -> TextAction("Retry", icon = Icons.Rounded.Refresh) { Queue.retry(job.id) }
             }
 
             // A file that came out in a codec this phone won't draw can be
             // re-encoded in place rather than downloaded again.
             if (job.warning != null && job.savedUri != null) {
-                TextAction("Make it playable") {
+                TextAction("Make it playable", icon = Icons.Rounded.AutoFixHigh) {
                     val uri = Uri.parse(job.savedUri)
                     ConvertState.setSource(uri, job.savedName.orEmpty())
                     ConvertService.start(context, uri, Converter.Target.Mp4())

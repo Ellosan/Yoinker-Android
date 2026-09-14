@@ -18,6 +18,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +51,7 @@ import com.pylo.yoinker.automation.Routine
 import com.pylo.yoinker.automation.Trigger
 import com.pylo.yoinker.automation.TriggerKind
 import com.pylo.yoinker.core.Prefs
+import com.pylo.yoinker.ui.theme.Space
 import com.pylo.yoinker.ui.theme.Yk
 
 @Composable
@@ -57,26 +61,18 @@ fun RoutinesPane() {
     var editing by remember { mutableStateOf<Routine?>(null) }
     var showHooks by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = Space.gutter)) {
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(Space.md),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
             modifier = Modifier.weight(1f),
         ) {
             item {
-                Text(
-                    text = "Routines",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = Yk.Ink,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-                Text(
-                    text = "When something happens on this phone, Yoinker does something about " +
-                        "it. The built-in ones follow what your device Modes already change — " +
-                        "Do Not Disturb, Wi-Fi, the charger.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Yk.InkFaint,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                ScreenTitle(
+                    title = "Routines",
+                    subtitle = "When something happens on this phone, Yoinker does something " +
+                        "about it. The built-in ones follow what your device Modes already " +
+                        "change — Do Not Disturb, Wi-Fi, the charger.",
                 )
             }
 
@@ -97,14 +93,16 @@ fun RoutinesPane() {
 
             item {
                 Spacer(Modifier.height(4.dp))
-                GhostButton(
-                    text = "+   New routine",
+                SecondaryButton(
+                    text = "New routine",
+                    icon = Icons.Rounded.Add,
                     tint = Yk.GoldBright,
                     modifier = Modifier.fillMaxWidth(),
                 ) { editing = Routine(name = "New routine") }
                 Spacer(Modifier.height(10.dp))
-                GhostButton(
+                SecondaryButton(
                     text = "Automation hooks",
+                    icon = Icons.Rounded.Extension,
                     modifier = Modifier.fillMaxWidth(),
                 ) { showHooks = true }
             }
@@ -197,7 +195,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                 )
 
                 SectionLabel("When")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                     TriggerKind.entries.forEach { kind ->
                         Pill(
                             label = kind.label,
@@ -208,7 +206,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
 
                 if (draft.trigger.kind.needsTime) {
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
                         NumberField("Hour", draft.trigger.hour, 0..23) {
                             draft = draft.copy(trigger = draft.trigger.copy(hour = it))
                         }
@@ -230,7 +228,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                 }
 
                 SectionLabel("Only if")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                     ConditionKind.entries.forEach { kind ->
                         val on = draft.conditions.any { it.kind == kind }
                         Pill(
@@ -262,7 +260,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
 
                 draft.conditions.firstOrNull { it.kind.needsMode }?.let { condition ->
                     SectionLabel("In mode")
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                         modes.forEach { mode ->
                             Pill(
                                 selected = condition.modeId == mode.id,
@@ -280,7 +278,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
                 }
 
                 SectionLabel("Then")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                     ActionKind.entries.forEach { kind ->
                         val on = draft.actions.any { it.kind == kind }
                         Pill(
@@ -301,7 +299,7 @@ private fun RoutineEditor(routine: Routine, onDismiss: () -> Unit, onSave: (Rout
 
                 draft.actions.firstOrNull { it.kind.needsMode }?.let { action ->
                     SectionLabel("Switch to")
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                         modes.forEach { mode ->
                             Pill(
                                 selected = action.modeId == mode.id,
@@ -395,7 +393,7 @@ private fun HooksDialog(onDismiss: () -> Unit) {
                         val slot = index + 1
                         SectionLabel("Mode $slot")
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Space.sm),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState()),
