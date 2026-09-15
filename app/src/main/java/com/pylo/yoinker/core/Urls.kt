@@ -10,9 +10,41 @@ private val URL_RE = Regex("""https?://[^\s<>"']+""", RegexOption.IGNORE_CASE)
 fun extractUrl(text: CharSequence?): String? {
     if (text.isNullOrBlank()) return null
     val match = URL_RE.find(text) ?: return null
-    // Trailing punctuation from prose ("… see https://x.com/y.") isn't part of the link.
-    return match.value.trimEnd('.', ',', ')', ']', '}', '!', '?', ';', ':', '"', '\'')
-        .takeIf { it.length > "https://".length }
+    return trimProse(match.value).takeIf { it.length > "https://".length }
+}
+
+private const val PROSE_TAIL = ".,!?;:\"'"
+
+/**
+ * Strips the punctuation that ended the sentence rather than the link.
+ *
+ * Brackets need care: trimming every trailing one turns
+ * `…/wiki/Yoink_(disambiguation)` into a 404, while `(see …/clip)` really does end
+ * with the prose's own bracket. The link keeps a closing bracket only when it
+ * opened one itself.
+ */
+private fun trimProse(url: String): String {
+    var end = url.length
+    while (end > 0) {
+        val last = url[end - 1]
+        val opener = when (last) {
+            ')' -> '('
+            ']' -> '['
+            '}' -> '{'
+            else -> null
+        }
+        when {
+            opener != null -> {
+                val kept = url.substring(0, end)
+                if (kept.count { it == opener } >= kept.count { it == last }) break
+                end--
+            }
+
+            last in PROSE_TAIL -> end--
+            else -> break
+        }
+    }
+    return url.substring(0, end)
 }
 
 fun isYoinkable(text: CharSequence?): Boolean = extractUrl(text) != null

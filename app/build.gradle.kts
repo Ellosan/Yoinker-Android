@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,25 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.paparazzi)
 }
+
+/**
+ * Release signing, if this machine has a key.
+ *
+ * Read from keystore.properties beside the project, or from the environment so CI
+ * can pass secrets without a file. Neither is committed. Without one the release
+ * build still runs — it just comes out unsigned, which is fine for checking that
+ * R8 hasn't broken anything and useless for anything else.
+ */
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun secret(key: String, env: String): String? =
+    keystoreProperties.getProperty(key) ?: System.getenv(env)
+
+val keystorePath = secret("storeFile", "YOINKER_KEYSTORE")
+val hasSigningKey = keystorePath != null && file(keystorePath).exists()
 
 android {
     namespace = "com.pylo.yoinker"
@@ -19,11 +40,23 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        if (hasSigningKey) {
+            create("release") {
+                storeFile = file(keystorePath!!)
+                storePassword = secret("storePassword", "YOINKER_KEYSTORE_PASSWORD")
+                keyAlias = secret("keyAlias", "YOINKER_KEY_ALIAS")
+                keyPassword = secret("keyPassword", "YOINKER_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasSigningKey) signingConfig = signingConfigs.getByName("release")
         }
         debug {
             applicationIdSuffix = ".debug"

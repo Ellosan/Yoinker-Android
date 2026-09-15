@@ -104,6 +104,24 @@ APKs land in `app/build/outputs/apk/debug/`. There's one per architecture plus a
 universal build — take `arm64-v8a` unless you know your phone is something else.
 They're large (~80 MB) because a whole python runtime and ffmpeg ride along inside.
 
+### Releasing
+
+`./gradlew assembleRelease` signs the build if a key is available — either a
+`keystore.properties` file beside the project:
+
+```properties
+storeFile=/path/to/yoinker.jks
+storePassword=…
+keyAlias=yoinker
+keyPassword=…
+```
+
+or the same four values as `YOINKER_KEYSTORE`, `YOINKER_KEYSTORE_PASSWORD`,
+`YOINKER_KEY_ALIAS` and `YOINKER_KEY_PASSWORD` in the environment, which is how a
+CI job would pass them. Neither the file nor a `.jks` is ever committed. With no
+key the release build still runs and comes out unsigned — useful for checking that
+R8 hasn't broken anything, useless for installing.
+
 ## Keeping the engine fresh
 
 Sites change; yt-dlp updates often. Yoinker freshens itself in the background at most

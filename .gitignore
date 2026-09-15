@@ -9,3 +9,8 @@ captures/
 .cxx
 *.apk
 *.aab
+
+# Signing keys never belong in the repository.
+keystore.properties
+*.jks
+*.keystore
