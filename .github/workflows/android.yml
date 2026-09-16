@@ -20,11 +20,21 @@ jobs:
           java-version: "21"
           distribution: temurin
 
-      - name: Set up the Android SDK
-        uses: android-actions/setup-android@v3
-
+      # No setup-android action here on purpose. It insists on installing "tools",
+      # a package Google removed from the SDK repository, which broke this build
+      # without a line of ours changing. The runner image already ships an SDK —
+      # all it needs is the platform we compile against.
       - name: Install the build platform
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          SDKMANAGER=$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "No sdkmanager under $SDK/cmdline-tools" >&2
+            exit 1
+          fi
+          echo "Using $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Build debug APKs
         # Phones only: the universal and x86_64 builds are for emulators, and each
